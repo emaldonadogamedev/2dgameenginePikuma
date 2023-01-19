@@ -3,15 +3,15 @@
 #include <SDL.h>
 #include <SDL_image.h>
 
-#include "Logger.h"
-
-#include <iostream>
+#include "../Logger/Logger.h"
 
 Game::Game()
     :m_isRunning(false)
     ,m_msPreviousFrame(0)
     ,m_isCappingFPS(false)
     ,m_deltaTime(0.f)
+    ,m_windowWidth(800)
+    ,m_windowHeight(600)
     ,m_sdlWindow(nullptr)
     ,m_sdlRenderer(nullptr)
 {
