@@ -1,11 +1,19 @@
 #include "Game.h"
 
 #include <SDL.h>
+#include <SDL_image.h>
+
+#include "Logger.h"
 
 #include <iostream>
 
 Game::Game()
-    :isRunning(false)
+    :m_isRunning(false)
+    ,m_msPreviousFrame(0)
+    ,m_isCappingFPS(false)
+    ,m_deltaTime(0.f)
+    ,m_sdlWindow(nullptr)
+    ,m_sdlRenderer(nullptr)
 {
 }
 
@@ -18,41 +26,54 @@ void Game::Initialize()
     const int sdlInitResult = SDL_Init(SDL_INIT_EVERYTHING);
     if(sdlInitResult != 0)
     {
-        std::cerr<<"Error Initializing SDL";
+        Logger::Error("Error Initializing SDL");
         return;
     }
 
     SDL_DisplayMode sdlDisplayMode;
     SDL_GetCurrentDisplayMode(0, &sdlDisplayMode);
-    windowWidth = sdlDisplayMode.w;
-    windowHeight = sdlDisplayMode.h;
+    m_windowWidth = sdlDisplayMode.w;
+    m_windowHeight = sdlDisplayMode.h;
 
-    sdlWindow = SDL_CreateWindow(
+    m_sdlWindow = SDL_CreateWindow(
         "2D Game Engine",
         SDL_WINDOWPOS_CENTERED,
         SDL_WINDOWPOS_CENTERED,
-        windowWidth, 
-        windowHeight,
+        m_windowWidth, 
+        m_windowHeight,
         SDL_WINDOW_BORDERLESS);
-    if(sdlWindow == nullptr)
+    if(m_sdlWindow == nullptr)
     {
-        std::cerr<<"Error creating an SDL window";
+        Logger::Error("Error creating an SDL window");
         return;
     }
 
-    sdlRenderer = SDL_CreateRenderer(sdlWindow, -1, 0);
-    if(sdlRenderer == nullptr)
+    m_sdlRenderer = SDL_CreateRenderer(
+        m_sdlWindow, 
+        -1,
+        SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+    if(m_sdlRenderer == nullptr)
     {
-        std::cerr<<"Error creating an SDL renderer";
+        Logger::Error("Error creating an SDL renderer");
         return;
     }
 
-    isRunning = true;
+    // for real full screen
+    SDL_SetWindowFullscreen(m_sdlWindow, SDL_WINDOW_FULLSCREEN);
+
+    m_isRunning = true;
+}
+
+void Game::Setup()
+{
+    //TODO: Initialize game objects
 }
 
 void Game::Run()
 {
-    while(isRunning)
+    Setup();
+    
+    while(m_isRunning)
     {
         ProcessInput();
         Update();
@@ -68,12 +89,12 @@ void Game::ProcessInput()
         switch(sdlEvent.type)
         {
             case SDL_QUIT: //if user closes window(X button)
-                isRunning = false;
+                m_isRunning = false;
                 break;
 
             case SDL_KEYDOWN:
                 if(sdlEvent.key.keysym.sym == SDLK_ESCAPE)
-                    isRunning = false;
+                    m_isRunning = false;
                 break;
 
             default:
@@ -84,22 +105,44 @@ void Game::ProcessInput()
 
 void Game::Update()
 {
-    //TODO: Update game objects
+    if(m_isCappingFPS)
+    {
+        int timeToWait = MS_PER_FRAME - (SDL_GetTicks() - m_msPreviousFrame);
+    
+        if(timeToWait > 0 && timeToWait <= MS_PER_FRAME)
+        {    
+            SDL_Delay(timeToWait);
+        }
+    }
+
+    m_deltaTime = (SDL_GetTicks() - m_msPreviousFrame)/1000.f;
+
+    // store current frame time
+    m_msPreviousFrame = SDL_GetTicks();
 }
 
 void Game::Render()
 {
-    SDL_SetRenderDrawColor(sdlRenderer, 255, 0, 0, SDL_ALPHA_OPAQUE);
-    SDL_RenderClear(sdlRenderer);
+    SDL_SetRenderDrawColor(m_sdlRenderer, 21, 21, 21, SDL_ALPHA_OPAQUE);
+    SDL_RenderClear(m_sdlRenderer);
 
-    // TODO: Render all Game Objects
+    // TODO: render game objects
 
-    SDL_RenderPresent(sdlRenderer);
+    // draw PNG texture
+    SDL_Surface* sdlSurface = IMG_Load("./assets/images/tank-panther-right.png");
+    SDL_Texture* sdlTexture = SDL_CreateTextureFromSurface(m_sdlRenderer, sdlSurface);
+    SDL_FreeSurface(sdlSurface);
+
+    const SDL_Rect destinationRect = {10,10, 20, 20};
+    SDL_RenderCopy(m_sdlRenderer, sdlTexture, nullptr, &destinationRect);
+    SDL_DestroyTexture(sdlTexture);
+
+    SDL_RenderPresent(m_sdlRenderer);
 }
 
 void Game::Destroy()
 {
-    SDL_DestroyRenderer(sdlRenderer);
-    SDL_DestroyWindow(sdlWindow);
+    SDL_DestroyRenderer(m_sdlRenderer);
+    SDL_DestroyWindow(m_sdlWindow);
     SDL_Quit();
 }
