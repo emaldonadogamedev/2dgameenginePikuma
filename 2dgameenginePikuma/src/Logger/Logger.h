@@ -16,7 +16,7 @@ struct LogEntry
 {
     LogEntry(
         LogEntryType logEntryType = LogEntryType::LOG_INFO,
-        std::string logMessage = "") :
+        std::string logMessage = ""):
         logEntryType(logEntryType),
         logMessage(logMessage)
     {
