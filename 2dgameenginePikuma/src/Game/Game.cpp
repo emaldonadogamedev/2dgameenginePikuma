@@ -3,6 +3,8 @@
 #include <SDL.h>
 #include <SDL_image.h>
 
+#include "../ECS/ECS.h"
+
 #include "../Logger/Logger.h"
 
 Game::Game()
@@ -127,15 +129,6 @@ void Game::Render()
     SDL_RenderClear(m_sdlRenderer);
 
     // TODO: render game objects
-
-    // draw PNG texture
-    SDL_Surface* sdlSurface = IMG_Load("./assets/images/tank-panther-right.png");
-    SDL_Texture* sdlTexture = SDL_CreateTextureFromSurface(m_sdlRenderer, sdlSurface);
-    SDL_FreeSurface(sdlSurface);
-
-    const SDL_Rect destinationRect = {10,10, 20, 20};
-    SDL_RenderCopy(m_sdlRenderer, sdlTexture, nullptr, &destinationRect);
-    SDL_DestroyTexture(sdlTexture);
 
     SDL_RenderPresent(m_sdlRenderer);
 }
