@@ -8,6 +8,8 @@
 #include <vector>
 #include <unordered_map>
 
+#include <memory>
+
 typedef unsigned int EntityId;
 
 const unsigned MAX_COMPONENTS = 64U;
@@ -25,7 +27,8 @@ struct BaseComponent
     protected:
         static unsigned nextComponentId;
 };
-
+// https://courses.pikuma.com/manage/discussion/posts/1959554
+// 
 // used to assign a unique id to a component type
 template <typename ComponentType>
 class Component : public BaseComponent
@@ -79,6 +82,7 @@ class System
             const auto componentId = Component<ComponentType>::GetComponentId();
             m_componentSignature.set(componentId);
         }
+
     private:
         ComponentSignature m_componentSignature;
         std::vector<Entity> m_entities;
@@ -104,6 +108,8 @@ class Registry
         class BaseComponentMemoryPool : public IMemoryPool
         {
             public:
+                BaseComponentMemoryPool() = default;
+                virtual ~BaseComponentMemoryPool() = default;
                 virtual bool IsEmpty() const = 0;
                 virtual size_t GetSize() const = 0;
                 virtual void Resize(size_t newSize) = 0;
@@ -150,7 +156,7 @@ class Registry
         };
 
         template<typename ComponentType>
-        class ArrayComponentMemoryPool : public BaseComponentMemoryPool<ComponentType>
+        class ArrayComponentMemoryPool : public IMemoryPool
         {
             public:
                 ArrayComponentMemoryPool(size_t size = 100)
@@ -206,12 +212,118 @@ class Registry
         Registry() = default;
         ~Registry() = default;
 
-        Entity& CreateEntity();
+        // Manage Entities
+        Entity CreateEntity();
+        void DestroyEntity(Entity entity);
 
+        // Manage Components
+        template <typename ComponentType, typename ...ComponentTypeArgs>
+        void AddComponentToEntity(Entity entity, ComponentTypeArgs&& ...componentTypeArgs)
+        {
+            const auto componentId = Component<ComponentType>::GetComponentId();
+            const auto entityId = entity.GetEntityId();
+
+            ArrayComponentMemoryPool<ComponentType>* componentPool = nullptr;
+
+            //Get the memory pool
+            if (componentId >= m_componentPools.size())
+            {
+                componentPool = new ArrayComponentMemoryPool<ComponentType>();
+                m_componentPools.push_back(componentPool);
+            }
+            else
+            {
+                componentPool = m_componentPools[componentId];
+            }
+
+            //resize component pool if necessary
+            if (entityId >= componentPool->GetSize())
+            {
+                componentPool->Resize(m_numberOfEntities);
+            }
+
+            // create a new entity component and forward the parameters to the constructor
+            ComponentType newComponent(std::forward<ComponentTypeArgs>(componentTypeArgs)...);
+
+            // add the component to the entity
+            componentPool->Set(entityId,newComponent);
+
+            // finally, change the component signature of the entity
+            m_entityComponentSignatures[entityId].set(componentId, true);
+        }
+
+        template <typename ComponentType>
+        void RemoveComponentFromEntity(Entity entity)
+        {
+            const auto componentId = Component<ComponentType>::GetComponentId();
+            const auto entityId = entity.GetEntityId();
+
+            m_entityComponentSignatures[entityId].set(componentId, false);
+        }
+
+        template <typename ComponentType>
+        bool IsComponentInEntity(Entity entity) const
+        {
+            const auto componentId = Component<ComponentType>::GetComponentId();
+            const auto entityId = entity.GetEntityId();
+
+            return m_entityComponentSignatures[entityId].test(componentId);
+        }
+
+        BaseComponent& GetComponentFromEntity(Entity entity);
+
+        // Manage Systems
+        template <typename SystemType, typename ...SystemTypeArgs>
+        void AddSystem(SystemTypeArgs&& ...systemTypeArgs)
+        {
+            SystemType* newSystem(
+                new SystemType(std::forward<SystemTypeArgs>(systemTypeArgs)...));
+
+            m_systems.insert(std::type_index(typeid(SystemType)), newSystem);
+        }
+
+        template <typename SystemType>
+        SystemType& GetSystem() const
+        {
+            auto keyPair = m_systems.find(std::type_index(typeid(SystemType)));
+            SystemType* system = std::static_pointer_cast<SystemType>(keyPair->second);
+
+            return *system;
+        }
+
+        template <typename SystemType>
+        void RemoveSystem()
+        {
+            if (!HasSystem<SystemType>())
+            {
+                return;
+            }
+
+            SystemType* systemToBeRemoved = m_systems.find(std::type_index(typeid(SystemType)));
+
+            m_systems.erase(systemToBeRemoved);
+
+            delete systemToBeRemoved;
+        }
+
+        template <typename SystemType>
+        bool HasSystem() const
+        {
+            return m_systems.find(std::type_index(typeid(SystemType))) != m_systems.end();
+        }
+
+        // checks that the component signature of an entity to add it to the systems
+        // that would be interested in it
+        void AddEntityToSystems(Entity entity);
+
+        void Update();
 
     private:
 
-        int m_numberOfEntities;
+        int m_numberOfEntities = 0;
+
+        std::vector<Entity> m_entittiesToBeAdded; // entities awaiting creation in next update
+        std::vector<Entity> m_entittiesToBeDestroyed; // entities awaiting deletion in next update
 
         // vector of pools. Each pool contains all of the data for a certain component type
         // vector index = component type id

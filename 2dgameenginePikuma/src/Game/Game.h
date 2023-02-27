@@ -1,6 +1,8 @@
 #ifndef GAME_H
 #define GAME_H
 
+#include <memory>
+
 // SDL Forward declarations
 // instead of adding #include <SDL2/SDL.h>
 typedef struct SDL_Window SDL_Window;
@@ -9,6 +11,8 @@ typedef struct SDL_Renderer SDL_Renderer;
 
 const int FRAMES_PER_SECOND = 60;
 const int MS_PER_FRAME = 1000 / FRAMES_PER_SECOND;
+
+class Registry;
 
 class Game
 {
@@ -38,6 +42,8 @@ class Game
 
         SDL_Window* m_sdlWindow;
         SDL_Renderer* m_sdlRenderer;
+
+        std::unique_ptr<Registry> m_registry;
 };
 
 #endif

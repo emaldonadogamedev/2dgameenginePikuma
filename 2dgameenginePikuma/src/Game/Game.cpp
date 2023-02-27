@@ -16,6 +16,7 @@ Game::Game()
     ,m_windowHeight(600)
     ,m_sdlWindow(nullptr)
     ,m_sdlRenderer(nullptr)
+    ,m_registry(std::make_unique<Registry>())
 {
 }
 
@@ -68,7 +69,8 @@ void Game::Initialize()
 
 void Game::Setup()
 {
-    //TODO: Initialize game objects
+    Entity tank = m_registry->CreateEntity();
+    Entity truck = m_registry->CreateEntity();
 }
 
 void Game::Run()
