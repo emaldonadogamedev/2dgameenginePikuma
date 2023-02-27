@@ -18,10 +18,12 @@ Game::Game()
     ,m_sdlRenderer(nullptr)
     ,m_registry(std::make_unique<Registry>())
 {
+    Logger::Log("Game class constructor called");
 }
 
 Game::~Game()
 {
+    Logger::Log("Game class destructor called");
 }
 
 void Game::Initialize()

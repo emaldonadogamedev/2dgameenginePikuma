@@ -223,17 +223,18 @@ class Registry
             const auto componentId = Component<ComponentType>::GetComponentId();
             const auto entityId = entity.GetEntityId();
 
-            ArrayComponentMemoryPool<ComponentType>* componentPool = nullptr;
+            std::shared_ptr<ArrayComponentMemoryPool<ComponentType>> componentPool = nullptr;
 
             //Get the memory pool
             if (componentId >= m_componentPools.size())
             {
-                componentPool = new ArrayComponentMemoryPool<ComponentType>();
+                componentPool = std::make_shared<ArrayComponentMemoryPool<ComponentType>>();
                 m_componentPools.push_back(componentPool);
             }
             else
             {
-                componentPool = m_componentPools[componentId];
+                componentPool = std::static_pointer_cast<ArrayComponentMemoryPool<ComponentType>>(
+                    m_componentPools[componentId]);
             }
 
             //resize component pool if necessary
@@ -276,8 +277,10 @@ class Registry
         template <typename SystemType, typename ...SystemTypeArgs>
         void AddSystem(SystemTypeArgs&& ...systemTypeArgs)
         {
-            SystemType* newSystem(
-                new SystemType(std::forward<SystemTypeArgs>(systemTypeArgs)...));
+            std::shared_ptr<SystemType> newSystem(
+                std::make_shared<SystemType>(
+                    std::forward<SystemTypeArgs>(systemTypeArgs)...)
+            );
 
             m_systems.insert(std::type_index(typeid(SystemType)), newSystem);
         }
@@ -328,7 +331,7 @@ class Registry
         // vector of pools. Each pool contains all of the data for a certain component type
         // vector index = component type id
         // pool index = entity id
-        std::vector<IMemoryPool> m_componentPools;
+        std::vector<std::shared_ptr<IMemoryPool>> m_componentPools;
 
         // Vector of component signatures
         // The signature lets us know which componnents are turned "on" for an entity
@@ -336,7 +339,7 @@ class Registry
         std::vector<ComponentSignature> m_entityComponentSignatures;
 
         // umap of active systems [index = system type id]
-        std::unordered_map<std::type_index, System*> m_systems;
+        std::unordered_map<std::type_index, std::shared_ptr<System>> m_systems;
 };
 
 #endif // !ECS_H
