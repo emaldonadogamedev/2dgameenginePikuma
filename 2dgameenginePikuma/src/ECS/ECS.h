@@ -10,6 +10,8 @@
 
 #include <memory>
 
+#include "../Logger/Logger.h"
+
 typedef unsigned int EntityId;
 
 const unsigned MAX_COMPONENTS = 64U;
@@ -33,6 +35,7 @@ struct BaseComponent
 template <typename ComponentType>
 class Component : public BaseComponent
 {
+    public:
         // Returns the unique id of Component<T>
         static int GetComponentId()
         {
@@ -100,7 +103,7 @@ class Registry
         class IMemoryPool
         {
             public:
-                virtual ~IMemoryPool() = 0;
+                virtual ~IMemoryPool() {}
         };
 
         // Pool: a data structure of objects of type
@@ -161,12 +164,14 @@ class Registry
             public:
                 ArrayComponentMemoryPool(size_t size = 100)
                 {
-                    m_data.resize(size);
+                    m_data.reserve(size);
                 }
 
-                ~ArrayComponentMemoryPool() = default;
+                ~ArrayComponentMemoryPool() override
+                {
+                }
 
-                bool IsEmpty() const override
+                bool IsEmpty() const
                 {
                     return m_data.empty();
                 }
@@ -191,9 +196,9 @@ class Registry
                     m_data.push_back(component);
                 }
 
-                void Set(EntityId entityId, ComponentType entity)
+                void Set(EntityId entityId, ComponentType component)
                 {
-                    m_data[entityId] = entity;
+                    m_data[entityId] = component;
                 }
                 ComponentType& Get(EntityId entityId)
                 {
@@ -251,6 +256,9 @@ class Registry
 
             // finally, change the component signature of the entity
             m_entityComponentSignatures[entityId].set(componentId, true);
+
+            Logger::Log("Component id = " + std::to_string(componentId) + 
+                " was added to enity id: " + std::to_string(entityId));
         }
 
         template <typename ComponentType>

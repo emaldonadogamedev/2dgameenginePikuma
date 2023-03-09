@@ -7,6 +7,9 @@
 
 #include "../Logger/Logger.h"
 
+#include "../Components/TransformComponent.h"
+#include "../Components/RigidBodyComponent.h"
+
 Game::Game()
     :m_isRunning(false)
     ,m_msPreviousFrame(0)
@@ -71,8 +74,17 @@ void Game::Initialize()
 
 void Game::Setup()
 {
+    // create an entity
     Entity tank = m_registry->CreateEntity();
-    Entity truck = m_registry->CreateEntity();
+
+    // add some components
+    m_registry->AddComponentToEntity<TransformComponent>(
+        tank,
+        glm::vec2(10.f, 30.f),
+        glm::vec2(1.f, 1.f),
+        0.f);
+
+    m_registry->AddComponentToEntity<RigidBodyComponent>(tank, glm::vec2(50.f, 0.f));
 }
 
 void Game::Run()
